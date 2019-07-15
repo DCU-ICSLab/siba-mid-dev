@@ -1,0 +1,9 @@
+*.md
+!README.md
+node_modules
+Dockerfile
+Dockerfiles/
+.dockerignore
+npm-debug.log
+docker-compose.yml
+redis.conf
