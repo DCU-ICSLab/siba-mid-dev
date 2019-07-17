@@ -22,3 +22,5 @@ apt-get update -y && apt-get install -y hostapd dnsmasq udhcpd net-tools sudo gi
 #cd RF24Gateway && make && sudo make install && cd -
 
 #npm install && yes n | npm i nrf24
+
+npm install

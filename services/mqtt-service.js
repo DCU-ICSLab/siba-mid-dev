@@ -11,19 +11,29 @@ var client = mqtt.connect({
 
 //관리되는 topic들
 const DEV_REGISTER = 'dev/register';
+const DEV_KEEP_ALIVE = 'dev/register';
 const DEV_CONTROL = 'dev/control';
 const DEV_CONTROL_END = 'dev/control/end';
 
-const mqtt_connect = () => {
+const mqttTopcicSubscription = () => {
+
+    //디바이스 등록 토픽
     client.subscribe(DEV_REGISTER, (err) => {
         if(err) console.log(err);
     })
+
+    //디바이스 제어 종료 토픽
     client.subscribe(DEV_CONTROL_END, (err) => {
+        if(err) console.log(err);
+    })
+
+    //디바이스 keep-alive 토픽
+    client.subscribe(DEV_KEEP_ALIVE, (err) => {
         if(err) console.log(err);
     })
 }
 
-const mqtt_receive = () => {
+const mqttReceiveDefine = () => {
     client.on('message', (topic, message) => {
         let subData = JSON.parse(message.toString());
         console.log(subData)
@@ -35,6 +45,8 @@ const mqtt_receive = () => {
                 break;
             case DEV_CONTROL_END:
                 sendResultToSkill(subData);
+                break;
+            case DEV_KEEP_ALIVE:
                 break;
             default:
         }
@@ -53,8 +65,7 @@ const sendResultToSkill = (subData) => {
 
 const devRegisterOrUpdate = subData => {
 
-    loggerFactory.info('try device regist or updata');
-
+    //디바이스 조회
     models.dev.findAll({
         attributes: ['dev_mac', 'dev_type', 'cur_ip'],
         where: {
@@ -93,8 +104,10 @@ const devRegisterOrUpdate = subData => {
             });
         }
 
+        loggerFactory.info('try device regist or updata');
+
         //다중 명령이 전송되는 것을 방지하기위해 직전에 연결된 장비의 MAC 주소 등록
-        handleLockService.deviceUnlock(subData.dev_mac); 
+        //handleLockService.deviceUnlock(subData.dev_mac); 
 
         //regist or update 결과를 모듈에게 전송
         publishToDev(subData.dev_mac, {
@@ -146,7 +159,12 @@ module.exports = {
 
     //MQTT 초기화
     init: () => {
-        mqtt_connect(); //subscribe 등록
-        mqtt_receive();
-    }
+
+        //topic subscribe 설정
+        mqttTopcicSubscription(); 
+
+        //mqtt consumer 정의
+        mqttReceiveDefine();
+    },
+
 }

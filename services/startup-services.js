@@ -3,7 +3,6 @@ var internetAvailable = require('internet-available');
 var ledService = require('./led-services');
 var upnpService = require('./upnp-services');
 var apService = require('./ap-services');
-var nrf24Service = require('./nrf24-services');
 var mqttService = require('./mqtt-service');
 var requestService = require('./request-service');
 var models = require('../models');
@@ -14,6 +13,7 @@ var client = natUpnp.createClient();
 
 var KeepAiveService = require('./keep-alive-service')
 var ReadYamlFileService = require('./read-yaml-file-service')
+var sshClientService = require('./ssh-client-service')
 var RpiMonitoringService = require('./rpi-monitoring-service')
 
 const mac_interface = {
@@ -84,9 +84,6 @@ const hubSetup = () => {
             //NAT에 허브가 여러대 연결 된 경우?
             //허브가 원선에 바로 물려있다면 예외 발생시켜야
 
-            //nrf24 초기화
-            nrf24Service.init();
-
             models.hub.findAll().then(hubInfo => {
                 let isReg = false;
                 let mac = null;
@@ -148,7 +145,45 @@ const hubSetup = () => {
 }
 
 module.exports = {
-    start: () => {
-        //hubSetup();
+    start: async (server) => {
+
+        // 1 step. yaml 파일로 부터 사용자 설정 정보를 읽어 온다.
+        if(await ReadYamlFileService.readDevelopersConfigurations()){
+            const userConfiguration = ReadYamlFileService.getDevelopersConfigurations()
+
+            // 2 step. internet status check
+            //--------------------------------
+
+            // 3 step UPNP
+            //--------------------------------
+            if(await upnpService.init()){
+                const upnpConfiguration = upnpService.getUpnpOptions();
+                client.externalIp((err,external_ip) => {
+
+                    sshClientService.init(server);
+                    mqttService.init();
+
+                    //establish, keep-alive 설정
+                    KeepAiveService.init(userConfiguration.hubAuthKey, external_ip, upnpConfiguration.out);
+
+                });
+            }
+
+            // 4 step Access Point
+            apService.init(userConfiguration.iotHubSsid,userConfiguration.iotHubPassword);
+            apService.disable().then(()=>{
+                apService.enable()
+            })
+
+
+
+            //await apService.enable();
+
+            //amqp keep aliver 설정
+            //KeepAiveService.init(userConfiguration.hubAuthKey);
+            //sshClientService.init(server)
+            //RpiMonitoringService.monitoring();
+            //hubSetup();
+        }
     }
 }

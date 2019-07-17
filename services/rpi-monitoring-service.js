@@ -1,9 +1,21 @@
 var si = require('systeminformation');
 var os 	= require('os-utils');
+var getId = require('docker-container-id');
 
 module.exports = {
-    monitoring: () => {
-        //si.cpu().then(data => console.log(data))
+    monitoring: async () => {
+        console.log(await getId())
+        si.dockerContainerStats(await getId(), data=>{
+            console.log(data)
+        })
+        si.dockerContainerProcesses(await getId(), data=>{
+            console.log(data)
+        })
+        si.dockerInfo().then(data => console.log(data))
+        si.dockerInfo().then(data => console.log(data))
+        si.cpu().then(data => console.log(data))
+        si.system().then(data => console.log(data))
+        si.bios().then(data => console.log(data))
         si.mem().then(data => {
             const freeMem = Math.round((data.free/data.total)*100)
             const usedMem = Math.round((data.used/data.total)*100)

@@ -91,5 +91,5 @@ function onListening() {
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
   
-  startupService.start(); //iot-hub기동
+  startupService.start(server); //iot-hub기동
 }

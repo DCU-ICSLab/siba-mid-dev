@@ -1,0 +1,4 @@
+options:
+  hubAuthenticationKey: 4b3b5e1275604f1cb70704f8236c7242
+  iotHubSsid: 'siba-hub'
+  iotHubPassword: 'raspberry'
