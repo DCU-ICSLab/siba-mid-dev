@@ -16,12 +16,13 @@ module.exports = {
 
                 //upnp를 수행하고자 하는 포트가 기존에 매핑되어 있었는지?
                 results.some(element => {
-                    result = !(element.public.port === upnp_options.out)
-                    return !result;
+                    result = (element.public.port === upnp_options.out)
+                    if(result) loggerFactory.info('upnp is already defined');
+                    return result;
                 });
 
                 //매핑되어 있지 않다면 UPNP 수행
-                if(result){
+                if(!result){
                     client.portMapping({
                         public: upnp_options.out, //external
                         private: upnp_options.in, //internal
@@ -34,13 +35,12 @@ module.exports = {
                             loggerFactory.info('upnp port mapping failed');
                             result = false;
                         }
+                        resolve(true)
                     });
                 }
                 else{
                     resolve(true)
                 }
-
-                resolve(result)
             });
         })
     },

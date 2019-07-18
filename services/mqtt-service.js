@@ -4,6 +4,7 @@ const {promisify} = require('util');
 const getAsync = promisify(redisClient.get).bind(redisClient);
 var mqtt = require('mqtt');
 var handleLockService = require('./handleLock-service');
+var keepAliveService = require('./keep-alive-service');
 var client = mqtt.connect({
     host: 'localhost',
     port: 1883
@@ -11,7 +12,7 @@ var client = mqtt.connect({
 
 //관리되는 topic들
 const DEV_REGISTER = 'dev/register';
-const DEV_KEEP_ALIVE = 'dev/register';
+const DEV_KEEP_ALIVE = 'dev/keepalive';
 const DEV_CONTROL = 'dev/control';
 const DEV_CONTROL_END = 'dev/control/end';
 
@@ -36,6 +37,7 @@ const mqttTopcicSubscription = () => {
 const mqttReceiveDefine = () => {
     client.on('message', (topic, message) => {
         let subData = JSON.parse(message.toString());
+        console.log(topic)
         console.log(subData)
 
         switch (topic) {
@@ -65,26 +67,28 @@ const sendResultToSkill = (subData) => {
 
 const devRegisterOrUpdate = subData => {
 
-    //디바이스 조회
+    //디바이스 등록 여부 조회
     models.dev.findAll({
-        attributes: ['dev_mac', 'dev_type', 'cur_ip'],
+        attributes: ['dev_mac', 'dev_type'],
         where: {
             dev_mac: subData.dev_mac
         }
     }).then(devInfo => {
+
         // 이전에 장비가 등록되었었다면,
         if (devInfo.length === 1) {
-            //기존에 연결된 장비의 세부 정보가 변경되었다면 업데이트
-            if (devInfo[0].cur_ip !== subData.cur_ip || devInfo[0].dev_type !== subData.dev_type) {
+            //기존에 연결된 장비의 인증키가 변경되었다면 업데이트
+            if (devInfo[0].dev_type !== subData.dev_type) {
                 models.dev.update({
-                    cur_ip: subData.cur_ip,
-                    dev_type: subData.dev_type
-                }, {
-                        where: {
-                            dev_mac: devInfo[0].dev_mac
-                        }
-                    })
-                    loggerFactory.info('update device state latest');
+                    dev_type: subData.dev_type,
+                    dev_status: true
+                }, 
+                {
+                    where: {
+                        dev_mac: devInfo[0].dev_mac
+                    }
+                })
+                loggerFactory.info('update device state latest');
             }
             else{
                 loggerFactory.info('device state is up to date');
@@ -93,23 +97,25 @@ const devRegisterOrUpdate = subData => {
 
         //등록된 장비가 아니라면
         else {
-            redisClient.get("mac", (err, reply) => {
-                models.dev.create({
-                    dev_mac: subData.dev_mac,
-                    cur_ip: subData.cur_ip,
-                    dev_type: subData.dev_type,
-                    mac: reply
-                });
-                loggerFactory.info('regist new device');
+            models.dev.create({
+                dev_mac: subData.dev_mac,
+                dev_type: subData.dev_type,
+                dev_status: true
             });
+            loggerFactory.info('regist new device');
         }
 
-        loggerFactory.info('try device regist or updata');
+        //연결 정보 저장
+        models.clog.create({
+            clog_time: Date.now(),
+            dev_mac: subData.dev_mac,
+            clog_res: true
+        })
 
-        //다중 명령이 전송되는 것을 방지하기위해 직전에 연결된 장비의 MAC 주소 등록
-        //handleLockService.deviceUnlock(subData.dev_mac); 
-
-        //regist or update 결과를 모듈에게 전송
+        //서버에 연결 정보 전송
+        keepAliveService.sendToSibaPlatform(subData.dev_auth_key,subData.dev_mac)
+        
+        //등록이 완료됬음을 디바이스에게 전송
         publishToDev(subData.dev_mac, {
             cmd: [
                 {cmd_code: 0, data: ""} //cmd_code 0은 모듈이 허브에 등록되었음을 알려주는 코드

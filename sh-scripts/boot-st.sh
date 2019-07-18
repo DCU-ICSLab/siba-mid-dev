@@ -23,4 +23,7 @@ apt-get update -y && apt-get install -y hostapd dnsmasq udhcpd net-tools sudo gi
 
 #npm install && yes n | npm i nrf24
 
+npm install -g sequelize-auto
+npm install -g mysql
+
 npm install

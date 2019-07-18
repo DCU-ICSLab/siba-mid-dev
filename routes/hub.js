@@ -7,8 +7,16 @@ var models = require('../models');
 //허브 기본 정보 조회 (NAT ip, mac address, etc...)
 router.get('/', (req, res, next) => {
 
-    res.json({
-        status: true,
+    models.clog.findAll({
+        attributes: ['clog_time', 'dev_mac','clog_res'],
+        order: [
+            ['clog_time', 'DESC']
+        ]
+    }).then(logInfo => {
+        res.json({
+            status: true,
+            logInfo: logInfo
+        })
     })
 })
 
