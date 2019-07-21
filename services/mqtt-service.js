@@ -9,12 +9,15 @@ var client = mqtt.connect({
     host: 'localhost',
     port: 1883
 });
+var HttpStatus = require('http-status-codes');
 
 //관리되는 topic들
 const DEV_REGISTER = 'dev/register';
 const DEV_KEEP_ALIVE = 'dev/keepalive';
 const DEV_CONTROL = 'dev/control';
 const DEV_CONTROL_END = 'dev/control/end';
+
+const SYSTEM_BROKER_CLIENT_INACTIVE = 'dev/will'
 
 const mqttTopcicSubscription = () => {
 
@@ -32,10 +35,21 @@ const mqttTopcicSubscription = () => {
     client.subscribe(DEV_KEEP_ALIVE, (err) => {
         if(err) console.log(err);
     })
+
+    client.subscribe(SYSTEM_BROKER_CLIENT_INACTIVE, (err) => {
+        if(err) console.log(err);
+    })
 }
 
 const mqttReceiveDefine = () => {
     client.on('message', (topic, message) => {
+        if(topic===SYSTEM_BROKER_CLIENT_INACTIVE){
+            console.log(topic)
+            const msg = message.toString().split(',')
+            deivceDisconnect(msg[0], msg[1])
+            return;
+        }
+
         let subData = JSON.parse(message.toString());
         console.log(topic)
         console.log(subData)
@@ -50,19 +64,46 @@ const mqttReceiveDefine = () => {
                 break;
             case DEV_KEEP_ALIVE:
                 break;
+            case SYSTEM_BROKER_CLIENT_INACTIVE:
+                break;
             default:
         }
     })
 }
 
 //모듈에게 전송했던 명령이 끝나고 난 후의 처리.
-const sendResultToSkill = (subData) => {
+const sendResultToSkill = async (subData) => {
     //스킬 서버에게 명령 결과를 전송해줘야 함.
 
     //명령 수행이 완료되었으므로 lock 해제
-    handleLockService.deviceUnlock(subData.dev_mac); 
+    //handleLockService.deviceUnlock(subData.dev_mac); 
+
+    const reply = await getAsync(subData.dev_mac);
+    const tempObject = JSON.parse(reply) 
+
     loggerFactory.info(`device receive: ${subData.dev_mac}`);
-    console.log('some action is finish');
+    keepAliveService.deviceControlFinishResultResponse({
+        devMac: subData.dev_mac,
+        status: subData.status,
+        testId: tempObject.testId,
+        userId: tempObject.userId,
+        devId: tempObject.devId,
+        msg: '디바이스 명령이 정상적으로 수행되었습니다.'
+    })
+}
+
+//디바이스 연결 해제시 수행
+const deivceDisconnect = (dev_mac, dev_type) => {
+    if(dev_mac && dev_mac.length===17){
+        models.clog.create({
+            clog_time: Date.now(),
+            dev_mac: dev_mac,
+            clog_res: 0
+        })
+
+        //서버에 연결 정보 전송
+        keepAliveService.sendToSibaPlatform(dev_type,dev_mac,0)
+    }
 }
 
 const devRegisterOrUpdate = subData => {
@@ -109,59 +150,76 @@ const devRegisterOrUpdate = subData => {
         models.clog.create({
             clog_time: Date.now(),
             dev_mac: subData.dev_mac,
-            clog_res: true
+            clog_res: 1
         })
 
         //서버에 연결 정보 전송
-        keepAliveService.sendToSibaPlatform(subData.dev_auth_key,subData.dev_mac)
+        keepAliveService.sendToSibaPlatform(subData.dev_type,subData.dev_mac,1)
         
         //등록이 완료됬음을 디바이스에게 전송
-        publishToDev(subData.dev_mac, {
-            cmd: [
-                {cmd_code: 0, data: ""} //cmd_code 0은 모듈이 허브에 등록되었음을 알려주는 코드
-            ]
-        }, true); 
+        //cmd_code 0은 모듈이 허브에 등록되었음을 알려주는 코드
+        registerFinish(subData.dev_mac, [{eventCode: -1}]); 
     });
 }
 
-//하위 장비에게 제어 명령 전송
-const publishToDev = async (dev_channel, data, init = false, res = null) => {
-    //redis로 부터 명령을 전송하고자 하는 장비의 mac address 가져옴
-
-    let result = {
-        status: false,
-        msg: '디바이스가 다른 명령 수행 중 입니다.'
-    }
-
-    let reply = await getAsync(dev_channel);
-
-    if(!reply){ //redis에 등록된 장비의 MAC 주소가 없는경우
-        result = {
-            status: false,
-            msg: '등록된 디바이스가 아닙니다.'
-        }
-    } 
-    else if (reply === 'unlock'){
-        if(!init) //초기화 작업이 아닌 경우는 lock 설정
-            handleLockService.deviceLock(dev_channel);
-        loggerFactory.info(`device publish: ${dev_channel}`);
-        const buf = JSON.stringify(data);
-        client.publish(DEV_CONTROL + `/${dev_channel}`, buf);
-        
-        result = {
-            status: true,
-            msg: '명령을 성공적으로 전송하였습니다.'
-        }
-    }
-
-    if(res)
-        res.json(result);
+const registerFinish = async (dev_channel, data) => {
+    loggerFactory.info(`device register info return: ${dev_channel}`);
+    client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
+        cmdList: data
+    }));
 }
 
 module.exports = {
 
+    registerFinish: registerFinish,
+
     //제어 모듈 control 시에 사용
-    publish: publishToDev,
+    publish: async (dev_channel, data, res = null) => {
+        //redis로 부터 명령을 전송하고자 하는 장비의 mac address 가져옴
+
+        let result;
+    
+        /*let result = {
+            status: false,
+            msg: '디바이스가 다른 명령 수행 중 입니다.'
+        }
+    
+        let reply = await getAsync(dev_channel);
+    
+        if(!reply){ //redis에 등록된 장비의 MAC 주소가 없는경우
+            result = {
+                status: HttpStatus.INTERNAL_SERVER_ERROR,
+                msg: '등록된 디바이스가 아닙니다.'
+            }
+        } 
+        else if (reply === 'unlock'){
+            if(!init) //초기화 작업이 아닌 경우는 lock 설정
+                handleLockService.deviceLock(dev_channel);
+            loggerFactory.info(`device publish: ${dev_channel}`);
+            const buf = JSON.stringify(data);
+            client.publish(DEV_CONTROL + `/${dev_channel}`, buf);
+            
+            
+        }*/
+
+        console.log(data)
+
+        loggerFactory.info(`device publish: ${dev_channel}`);
+
+        client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
+            cmdList:[{eventCode: 0},{eventCode: 1}]
+        }));
+        /*client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
+            cmdList: data
+        }));*/
+
+        result = {
+            status: HttpStatus.OK,
+            msg: '명령이 정상적으로 허브에게 전송되었습니다.'
+        }
+
+        res.json(result);
+    },
 
     //MQTT 초기화
     init: () => {

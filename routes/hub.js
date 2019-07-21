@@ -13,9 +13,15 @@ router.get('/', (req, res, next) => {
             ['clog_time', 'DESC']
         ]
     }).then(logInfo => {
-        res.json({
-            status: true,
-            logInfo: logInfo
+        models.dev.findAll({
+            attributes: ['dev_mac', 'dev_type','dev_status'],
+        }).then(devInfo => {
+
+            res.json({
+                status: true,
+                logInfo: logInfo,
+                devInfo: devInfo,
+            })
         })
     })
 })
