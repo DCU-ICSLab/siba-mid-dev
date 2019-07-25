@@ -26,4 +26,22 @@ router.get('/', (req, res, next) => {
     })
 })
 
+router.get('/:channel/reservation', (req, res, next) => {
+    const dev_channel = req.params.channel;
+
+    models.reserve.findAll({
+        attributes: ['res_id', 'ev_code','act_at'],
+        
+    },{
+        where: {
+            mac: dev_channel
+        }
+    }).then(set => {
+        res.json({
+            status: true,
+            reserveList: set,
+        })
+    })
+})
+
 module.exports = router;

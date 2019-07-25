@@ -34,6 +34,7 @@ router.post('/:channel', (req, res, next) => {
 
     console.log(json_data)
 
+    //test id 정보 저장
     redisClient.set(json_data.devMac, JSON.stringify({
         testId: json_data.testId,
         userId: json_data.userId,

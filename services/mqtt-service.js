@@ -5,6 +5,7 @@ const getAsync = promisify(redisClient.get).bind(redisClient);
 var mqtt = require('mqtt');
 var handleLockService = require('./handleLock-service');
 var keepAliveService = require('./keep-alive-service');
+var ReservationService = require('./reservation-service');
 var client = mqtt.connect({
     host: 'localhost',
     port: 1883
@@ -13,7 +14,6 @@ var HttpStatus = require('http-status-codes');
 
 //관리되는 topic들
 const DEV_REGISTER = 'dev/register';
-const DEV_KEEP_ALIVE = 'dev/keepalive';
 const DEV_CONTROL = 'dev/control';
 const DEV_CONTROL_END = 'dev/control/end';
 
@@ -28,11 +28,6 @@ const mqttTopcicSubscription = () => {
 
     //디바이스 제어 종료 토픽
     client.subscribe(DEV_CONTROL_END, (err) => {
-        if(err) console.log(err);
-    })
-
-    //디바이스 keep-alive 토픽
-    client.subscribe(DEV_KEEP_ALIVE, (err) => {
         if(err) console.log(err);
     })
 
@@ -80,6 +75,8 @@ const sendResultToSkill = async (subData) => {
 
     const reply = await getAsync(subData.dev_mac);
     const tempObject = JSON.parse(reply) 
+
+    console.log(tempObject)
 
     loggerFactory.info(`device receive: ${subData.dev_mac}`);
     keepAliveService.deviceControlFinishResultResponse({
@@ -202,16 +199,41 @@ module.exports = {
             
         }*/
 
-        console.log(data)
+        //명령 리스트 필터링
+        const cmdList = data.map((item)=>{
 
-        loggerFactory.info(`device publish: ${dev_channel}`);
+            console.log(item.additional)
 
-        client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
-            cmdList:[{eventCode: 0},{eventCode: 1}]
-        }));
-        /*client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
-            cmdList: data
-        }));*/
+            //제어 커맨드인 경우
+            if(item.btnType==='1'){
+                return {
+                    eventCode: item.eventCode,
+                    dataset: item.additional,
+                }   
+            }
+
+            //예약 커맨드인 경우
+            else if(item.btnType==='5'){
+                //예약 수행
+                ReservationService.reserve(dev_channel,item)
+            }
+
+            //예약 취소 커맨드인 경우
+            else if(item.btnType==='6'){
+                ReservationService.reserve(dev_channel,item)
+            }
+        })
+
+        console.log(cmdList)
+
+        //디바이스에게 전송해야 하는 명령이 존재한다면 전송
+        if(cmdList && cmdList.length!==0){
+            loggerFactory.info(`device publish: ${dev_channel}`);
+
+            client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
+                cmdList:cmdList
+            }));
+        }
 
         result = {
             status: HttpStatus.OK,
@@ -219,6 +241,10 @@ module.exports = {
         }
 
         res.json(result);
+    },
+
+    publishToEvent: (dev_channel, json)=>{
+        client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify(json));
     },
 
     //MQTT 초기화
