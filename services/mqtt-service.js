@@ -199,17 +199,18 @@ module.exports = {
             
         }*/
 
-        //명령 리스트 필터링
-        const cmdList = data.map((item)=>{
+        //명령 리스트 필터링, undefined 처리 해야함.
+        let cmdList = []
 
+        for(let i=0; i < data.length; i++){
             console.log(item.additional)
 
             //제어 커맨드인 경우
             if(item.btnType==='1'){
-                return {
+                cmdList.push({
                     eventCode: item.eventCode,
                     dataset: item.additional,
-                }   
+                })   
             }
 
             //예약 커맨드인 경우
@@ -222,12 +223,12 @@ module.exports = {
             else if(item.btnType==='6'){
                 ReservationService.reserve(dev_channel,item)
             }
-        })
+        }
 
         console.log(cmdList)
 
         //디바이스에게 전송해야 하는 명령이 존재한다면 전송
-        if(cmdList && cmdList.length!==0){
+        if(cmdList.length!==0){
             loggerFactory.info(`device publish: ${dev_channel}`);
 
             client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
