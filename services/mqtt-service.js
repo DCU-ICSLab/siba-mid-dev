@@ -85,7 +85,7 @@ const sendResultToSkill = async (subData) => {
         testId: tempObject.testId,
         userId: tempObject.userId,
         devId: tempObject.devId,
-        msg: '디바이스 명령이 정상적으로 수행되었습니다.'
+        msg: subData.status===200 ? '디바이스 명령이 정상적으로 수행되었습니다.' : '명령 수행 오류가 발생했습니다.'
     })
 }
 
@@ -166,6 +166,10 @@ const registerFinish = async (dev_channel, data) => {
     }));
 }
 
+const publishToEvent = (dev_channel, json)=>{
+    client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify(json));
+}
+
 module.exports = {
 
     registerFinish: registerFinish,
@@ -199,29 +203,42 @@ module.exports = {
             
         }*/
 
-        //명령 리스트 필터링, undefined 처리 해야함.
+        //명령 리스트 필터링
         let cmdList = []
 
         for(let i=0; i < data.length; i++){
-            console.log(item.additional)
+            const item = data[i];
 
             //제어 커맨드인 경우
             if(item.btnType==='1'){
                 cmdList.push({
                     eventCode: item.eventCode,
-                    dataset: item.additional,
+                    dataset: item.additional.map((data)=>{
+                        if(data.type==='1'){
+                            return {
+                                type: parseInt(data.type, 10),
+                                value: new Date(data.value)
+                            }
+                        }
+                        else{
+                            return {
+                                type: parseInt(data.type, 10),
+                                value: data.value.toString()
+                            }
+                        }
+                    }),
                 })   
             }
 
             //예약 커맨드인 경우
             else if(item.btnType==='5'){
                 //예약 수행
-                ReservationService.reserve(dev_channel,item)
+                ReservationService.reserve(dev_channel,item, publishToEvent)
             }
 
             //예약 취소 커맨드인 경우
             else if(item.btnType==='6'){
-                ReservationService.reserve(dev_channel,item)
+                ReservationService.reserveCancel(item.additional[0].value,dev_channel)
             }
         }
 
@@ -242,10 +259,6 @@ module.exports = {
         }
 
         res.json(result);
-    },
-
-    publishToEvent: (dev_channel, json)=>{
-        client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify(json));
     },
 
     //MQTT 초기화

@@ -3,6 +3,7 @@ var router = express.Router();
 var network = require('network')
 var redisClient = require('../config/redis');
 var models = require('../models');
+var rerservationService = require('../services/reservation-service')
 
 //허브 기본 정보 조회 (NAT ip, mac address, etc...)
 router.get('/', (req, res, next) => {
@@ -38,9 +39,36 @@ router.get('/:channel/reservation', (req, res, next) => {
         }
     }).then(set => {
         res.json({
-            status: true,
-            reserveList: set,
+            reservationList: set,
         })
+    })
+})
+
+router.post('/reservation/:res_id', (req, res, next) => {
+    //const dev_channel = req.params.channel;
+    const res_id = req.params.res_id;
+
+    //예약 취소 수행
+    models.reserve.findAll({
+        attributes: ['res_id'],
+    },{
+        where: {
+            res_id: res_id
+        }
+    }).then(set => {
+        if(set.length!==0){
+            rerservationService.reserveCancel(res_id)
+            res.json({
+                status: 200,
+                msg: '예약 명령 삭제가 성공적으로 수행되었습니다.'
+            })
+        }
+        else{
+            res.json({
+                status: 200,
+                msg: '삭제하고자 하는 예약 명령이 존재하지 않습니다.'
+            })
+        }
     })
 })
 

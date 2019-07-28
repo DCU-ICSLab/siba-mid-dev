@@ -45,7 +45,7 @@ CREATE TABLE reserve
 (
     res_id               INTEGER NOT NULL AUTO_INCREMENT,
     dev_mac              CHAR(17) NOT NULL,
-	act_at               TIMESTAMP NULL,
+	act_at               BIGINT NULL,
 	ev_code              INTEGER NULL,
 	opt_dt               VARCHAR(30) NULL,
     PRIMARY KEY (res_id,dev_mac)
