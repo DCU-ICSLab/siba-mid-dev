@@ -26,7 +26,6 @@ router.get('/', [validationService.registerValidation,(req, res, next) => {
 
 //허브 하위 디바이스로 명령
 router.post('/:channel', (req, res, next) => {
-    //handleLockService.handleWithLock(req.params.devmac, apService.enable, res);
 
     const dev_channel = req.params.channel;
 

@@ -26,11 +26,11 @@ const reservationActor = (devMac, item, idxLoc, res_id, res_type, func) => {
             models.reserve.destroy({ where: { res_id: res_id } })
                 .then(result => {
                     func(devMac, {
-                        cmdList:
+                        c:
                             [
                                 {
-                                    eventCode: item.eventCode,
-                                    dataset: idxLoc.dynamic ? [item.additional[idxLoc.dynamic]] : [],
+                                    e: item.eventCode,
+                                    d: idxLoc.dynamic ? [item.additional[idxLoc.dynamic]] : [],
                                 }
                             ]
                     })

@@ -154,20 +154,39 @@ const devRegisterOrUpdate = subData => {
         keepAliveService.sendToSibaPlatform(subData.dev_type,subData.dev_mac,1)
         
         //등록이 완료됬음을 디바이스에게 전송
-        //cmd_code 0은 모듈이 허브에 등록되었음을 알려주는 코드
-        registerFinish(subData.dev_mac, [{eventCode: -1}]); 
+        //cmd_code -1은 모듈이 허브에 등록되었음을 알려주는 코드
+        registerFinish(subData.dev_mac, [{e: -1}]); 
     });
 }
 
 const registerFinish = async (dev_channel, data) => {
     loggerFactory.info(`device register info return: ${dev_channel}`);
-    client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
-        cmdList: data
-    }));
+    client.publish(DEV_CONTROL + `/${dev_channel}`, `${1}/${1}/${JSON.stringify({
+        c: data
+    })}`,{
+        qos: 1
+    });
 }
 
 const publishToEvent = (dev_channel, json)=>{
-    client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify(json));
+    const sendCommand = JSON.stringify(json)
+
+    const last = sendCommand.length-1
+    const lastCount = Math.ceil((sendCommand.length-1)/90)
+    let i = 0;
+    let cnt =1;
+    while(true){
+        const fin = i+89
+        const index = fin > last ? last : fin 
+        client.publish(DEV_CONTROL + `/${dev_channel}`, `${cnt}/${lastCount}/${sendCommand.slice(i,index+1)}`,{
+            qos: 1
+        });
+        if(index===last){
+            break;
+        }
+        i+=90;
+        cnt++;
+    }
 }
 
 module.exports = {
@@ -212,8 +231,8 @@ module.exports = {
             //제어 커맨드인 경우
             if(item.btnType==='1'){
                 cmdList.push({
-                    eventCode: item.eventCode,
-                    dataset: item.additional.map((data)=>{
+                    e: item.eventCode,
+                    d: item.additional.map((data)=>{
                         if(data.type==='1'){
                             return {
                                 type: parseInt(data.type, 10),
@@ -248,9 +267,26 @@ module.exports = {
         if(cmdList.length!==0){
             loggerFactory.info(`device publish: ${dev_channel}`);
 
-            client.publish(DEV_CONTROL + `/${dev_channel}`, JSON.stringify({
-                cmdList:cmdList
-            }));
+            const sendCommand = JSON.stringify({
+                c:cmdList
+            })
+
+            const last = sendCommand.length-1
+            const lastCount = Math.ceil((sendCommand.length-1)/90)
+            let i = 0;
+            let cnt =1;
+            while(true){
+                const fin = i+89
+                const index = fin > last ? last : fin 
+                client.publish(DEV_CONTROL + `/${dev_channel}`, `${cnt}/${lastCount}/${sendCommand.slice(i,index+1)}`,{
+                    qos: 1
+                });
+                if(index===last){
+                    break;
+                }
+                i+=90;
+                cnt++;
+            }
         }
 
         result = {

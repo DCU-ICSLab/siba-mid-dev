@@ -1,7 +1,6 @@
 var hostapd = require('wireless-tools/hostapd');
 var udhcpd = require('wireless-tools/udhcpd');
 var ifconfig = require('wireless-tools/ifconfig');
-var wpa_supplicant = require('wireless-tools/wpa_supplicant');
 var async = require('async');
 
 const udhcpd_options = {
@@ -97,10 +96,4 @@ module.exports = {
     exportHostapdSettings: () => {
         return hostapd_options;
     },
-
-    // test: () => {
-    //     wpa_supplicant.disable('wlan0', function(err) {
-            
-    //     });
-    // }
 }
