@@ -9,6 +9,12 @@ const KEEP_ALIVE_TOPIC = 'keepalive'
 const ESTABLISH_ROUTE = 'establish.route'
 const ESTABLISH_TOPIC = 'establish'
 
+const DEVICE_ESTABLISH_ROUTE = 'device.establish.route'
+const DEVICE_ESTABLISH_TOPIC = 'device.establish'
+
+const DEVICE_CTRL_ROUTE = 'device.control.route'
+const DEVICE_CTRL_TOPIC = 'device.control'
+
 var keepAliveInterval = null;
 
 module.exports = {
@@ -48,6 +54,31 @@ module.exports = {
                     })), {contentType: 'application/json'})
                 }, 3000)
             })
+        })
+    },
+
+    sendToSibaPlatform: (devAuthKey, mac, msgType) => {
+        amqp.connect(AMQP_URL, (err,conn)=>{
+            conn.createChannel((err,ch)=>{
+                ch.publish(DEVICE_ESTABLISH_TOPIC, DEVICE_ESTABLISH_ROUTE, Buffer.from(JSON.stringify({
+                    devKey:devAuthKey,
+                    mac:mac,
+                    msgType:msgType
+                })), {contentType: 'application/json'})
+            });
+        })
+    },
+
+    deviceControlFinishResultResponse: (data) => {
+        amqp.connect(AMQP_URL, (err,conn)=>{
+            conn.createChannel((err,ch)=>{
+                ch.publish(
+                    DEVICE_CTRL_TOPIC, 
+                    DEVICE_CTRL_ROUTE, 
+                    Buffer.from(JSON.stringify(data)), 
+                    {contentType: 'application/json'}
+                )
+            });
         })
     }
 }

@@ -65,7 +65,7 @@ const compareIpAndUpdate = (cmpInfo) => {
     }
 }
 
-const hubSetup = () => {
+/*const hubSetup = () => {
 
     const connectionObj = setInterval(() => {
         internetAvailable({
@@ -142,7 +142,7 @@ const hubSetup = () => {
             console.log('No internet connected');
         })
     }, 5000);
-}
+}*/
 
 module.exports = {
     start: async (server) => {
@@ -160,6 +160,12 @@ module.exports = {
                 const upnpConfiguration = upnpService.getUpnpOptions();
                 client.externalIp((err,external_ip) => {
 
+                    // 4 step Access Point
+                    apService.init(userConfiguration.iotHubSsid,userConfiguration.iotHubPassword);
+                    apService.disable().then(()=>{
+                        apService.enable()
+                    })
+
                     sshClientService.init(server);
                     mqttService.init();
 
@@ -168,12 +174,6 @@ module.exports = {
 
                 });
             }
-
-            // 4 step Access Point
-            apService.init(userConfiguration.iotHubSsid,userConfiguration.iotHubPassword);
-            apService.disable().then(()=>{
-                apService.enable()
-            })
 
 
 

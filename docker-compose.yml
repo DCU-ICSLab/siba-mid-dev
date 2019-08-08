@@ -26,6 +26,7 @@ services:
 
     volumes:
       #- ./docker/data:/var/lib/maria/data
+      - ./cont-conf/my.cnf:/usr/local/mysql/my.cnf
       - ./sql-scripts:/docker-entrypoint-initdb.d
 
     #healthcheck를 통해 db컨테이너가 제대로 실행되는지 체크

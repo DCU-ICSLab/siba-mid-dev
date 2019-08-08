@@ -24,4 +24,7 @@ while ! mysql --protocol TCP -h "$MYSQL_HOST" -u "$MYSQL_USERNAME" -p"$MYSQL_PAS
 done
 
 >&2 echo "mariadb is up - EXECUTING COMMAND"
+
+sequelize-auto -o "./models" -d hub_system -h 127.0.0.1 -u user -p 3306 -x user -e mariadb
+
 exec $cmd

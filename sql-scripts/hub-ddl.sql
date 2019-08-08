@@ -1,23 +1,37 @@
 
-CREATE TABLE ap
+CREATE TABLE alog
 (
-	state                boolean NULL,
-	mac                  CHAR(17) NOT NULL
+	alog_time            TIMESTAMP NOT NULL,
+	alog_res             TINYINT NULL,
+	dev_mac              CHAR(17) NOT NULL
 );
 
 
 
-ALTER TABLE ap
-ADD PRIMARY KEY (mac);
+ALTER TABLE alog
+ADD PRIMARY KEY (alog_time,dev_mac);
+
+
+
+CREATE TABLE clog
+(
+	clog_time            TIMESTAMP NOT NULL,
+	clog_res             TINYINT NULL,
+	dev_mac              CHAR(17) NOT NULL
+);
+
+
+
+ALTER TABLE clog
+ADD PRIMARY KEY (clog_time,dev_mac);
 
 
 
 CREATE TABLE dev
 (
 	dev_mac              CHAR(17) NOT NULL,
-	cur_ip               VARCHAR(15) NULL,
-	dev_type             VARCHAR(30) NULL,
-	mac                  CHAR(17) NOT NULL
+	dev_type             CHAR(1) NULL,
+	dev_status           TINYINT NULL
 );
 
 
@@ -27,66 +41,26 @@ ADD PRIMARY KEY (dev_mac);
 
 
 
-CREATE TABLE hub
+CREATE TABLE reserve
 (
-	mac                  CHAR(17) NOT NULL,
-	cur_ip               VARCHAR(15) NULL,
-	prev_ip              VARCHAR(15) NULL,
-	upnp_port            INTEGER NULL,
-	is_reg               boolean NULL,
-	reg_date             DATE NULL
-);
+    res_id               INTEGER NOT NULL AUTO_INCREMENT,
+    dev_mac              CHAR(17) NOT NULL,
+    res_type              CHAR(1) NULL,
+	act_at               BIGINT NULL,
+	ev_code              INTEGER NULL,
+	opt_dt               VARCHAR(30) NULL,
+    PRIMARY KEY (res_id,dev_mac)
+) AUTO_INCREMENT=1;
+
+ALTER TABLE alog
+ADD FOREIGN KEY R_7 (dev_mac) REFERENCES dev (dev_mac);
 
 
 
-ALTER TABLE hub
-ADD PRIMARY KEY (mac);
+ALTER TABLE clog
+ADD FOREIGN KEY R_6 (dev_mac) REFERENCES dev (dev_mac);
 
 
 
-CREATE TABLE rf
-(
-	state                boolean NULL,
-	mac                  CHAR(17) NOT NULL
-);
-
-
-
-ALTER TABLE rf
-ADD PRIMARY KEY (mac);
-
-
-
-CREATE TABLE user
-(
-	id                   INTEGER NOT NULL,
-	role_type            VARCHAR(5) NULL,
-	mac                  CHAR(17) NOT NULL
-);
-
-
-
-ALTER TABLE user
-ADD PRIMARY KEY (id);
-
-
-
-ALTER TABLE ap
-ADD FOREIGN KEY R_1 (mac) REFERENCES hub (mac);
-
-
-
-ALTER TABLE dev
-ADD FOREIGN KEY R_4 (mac) REFERENCES hub (mac);
-
-
-
-ALTER TABLE rf
-ADD FOREIGN KEY R_2 (mac) REFERENCES hub (mac);
-
-
-
-ALTER TABLE user
-ADD FOREIGN KEY R_3 (mac) REFERENCES hub (mac);
-
-
+ALTER TABLE reserve
+ADD FOREIGN KEY R_8 (dev_mac) REFERENCES dev (dev_mac);

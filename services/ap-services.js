@@ -1,15 +1,14 @@
 var hostapd = require('wireless-tools/hostapd');
 var udhcpd = require('wireless-tools/udhcpd');
 var ifconfig = require('wireless-tools/ifconfig');
-var wpa_supplicant = require('wireless-tools/wpa_supplicant');
 var async = require('async');
 
 const udhcpd_options = {
     interface: 'wlan0',
-    start: '192.168.3.10',
-    end: '192.168.3.254',
+    start: '192.168.2.10',
+    end: '192.168.2.254',
     option: {
-        router: '192.168.3.1',
+        router: '192.168.2.1',
         subnet: '255.255.255.0',
         dns: ['8.8.4.4', '8.8.8.8']
     }
@@ -28,8 +27,8 @@ let hostapd_options = {
 const ifconfig_options = {
     interface: 'wlan0',
     //link: 'ethernet',
-    ipv4_address: '192.168.3.1',
-    ipv4_broadcast: '192.168.3.255',
+    ipv4_address: '192.168.2.1',
+    ipv4_broadcast: '192.168.2.255',
     ipv4_subnet_mask: '255.255.255.0'
 }
 
@@ -97,10 +96,4 @@ module.exports = {
     exportHostapdSettings: () => {
         return hostapd_options;
     },
-
-    // test: () => {
-    //     wpa_supplicant.disable('wlan0', function(err) {
-            
-    //     });
-    // }
 }
