@@ -1,7 +1,7 @@
 
 CREATE TABLE alog
 (
-	alog_time            TIMESTAMP NOT NULL,
+	alog_time            TIMESTAMP(2) NOT NULL,
 	alog_res             TINYINT NULL,
 	dev_mac              CHAR(17) NOT NULL
 );
@@ -15,7 +15,7 @@ ADD PRIMARY KEY (alog_time,dev_mac);
 
 CREATE TABLE clog
 (
-	clog_time            TIMESTAMP NOT NULL,
+	clog_time            TIMESTAMP(2) NOT NULL,
 	clog_res             TINYINT NULL,
 	dev_mac              CHAR(17) NOT NULL
 );
