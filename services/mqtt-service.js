@@ -20,6 +20,7 @@ const DEV_CONTROL = 'dev/control';
 const DEV_CONTROL_END = 'dev/control/end';
 const DEV_SET_STATE = 'dev/state/update'
 const DEV_INIT_STATE = 'dev/state/create'
+const DEV_SENSING_RECV = 'dev/sensing'
 
 const SYSTEM_BROKER_CLIENT_INACTIVE = 'dev/will'
 
@@ -46,6 +47,10 @@ const mqttTopcicSubscription = () => {
     })
 
     client.subscribe(SYSTEM_BROKER_CLIENT_INACTIVE, (err) => {
+        if (err) console.log(err);
+    })
+
+    client.subscribe(DEV_SENSING_RECV, (err) => {
         if (err) console.log(err);
     })
 }
@@ -77,6 +82,9 @@ const mqttReceiveDefine = () => {
                 break;
             case DEV_INIT_STATE:
                 modelService.insertDataModel(subData)
+                break;
+            case DEV_SENSING_RECV:
+                modelService.insertSensingData(subData)
                 break;
             case SYSTEM_BROKER_CLIENT_INACTIVE:
                 break;

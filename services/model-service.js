@@ -40,6 +40,10 @@ const typeMapping = (type) => {
     return output;
 }
 
+const ruleOperation = (type) => {
+    
+}
+
 const ddlGenerator = (model, devMac) => {
     return new Promise((resolve, reject) => {
         for (let i = 0; i < model.length; i++) {
@@ -140,5 +144,24 @@ module.exports = {
                     resolve(null)
             });
         })
+    },
+
+    insertSensingData: (record) => {
+        const replaceMac = record.mac.replace(/:/g, '')
+        models.sequelize.query(
+            `INSERT INTO ${record.key + '_' + replaceMac}
+            (
+                rec_time,
+                data
+            )
+            VALUES(
+                NOW(),
+                ${record.val}
+            )`
+        );
+    },
+
+    checkEventRule: (record) => {
+
     }
 }
