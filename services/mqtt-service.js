@@ -56,23 +56,24 @@ const mqttTopcicSubscription = () => {
 }
 
 const mqttReceiveDefine = () => {
-    client.on('message', (topic, message) => {
+    client.on('message', async (topic, message) => {
         if (topic === SYSTEM_BROKER_CLIENT_INACTIVE) {
             let dt = Date.now();
             console.log(topic)
             const msg = message.toString().split(',')
-            deivceDisconnect(msg[0], msg[1], dt)
+            deviceDisconnect(msg[0], msg[1], dt)
             return;
         }
 
-        let subData = JSON.parse(message.toString());
-        console.log(topic)
-        console.log(subData)
+        const subData = JSON.parse(message.toString());
+        //console.log(topic)
+        //console.log(subData)
 
         switch (topic) {
             //하위 장비가 연결되고 등록 정보를 전송했을 때,
             case DEV_REGISTER:
-                devRegisterOrUpdate(subData);
+                if(await getAsync('isreg')==='Y')
+                    devRegisterOrUpdate(subData);
                 break;
             case DEV_CONTROL_END:
                 sendResultToSkill(subData);
@@ -118,7 +119,7 @@ const sendResultToSkill = async (subData) => {
 }
 
 //디바이스 연결 해제시 수행
-const deivceDisconnect = (dev_mac, dev_type, dt) => {
+const deviceDisconnect = (dev_mac, dev_type, dt) => {
     if (dev_mac && dev_mac.length === 17) {
         //서버에 연결 정보 전송
         keepAliveService.sendToSibaPlatform(dev_type, dev_mac, 0)
@@ -187,7 +188,7 @@ const devRegisterOrUpdate = subData => {
             //상태 모델 DB 생성
             requestService.request(subData.dev_type).then((item) => {
 
-                modelService.createDataModelTable(item.data.model, subData.dev_mac).then((res) => {
+                modelService.createDataModelTable(item.data.model, subData.dev_mac, item.data.events).then((res) => {
 
                     //서버에 연결 정보 전송
                     keepAliveService.sendToSibaPlatform(subData.dev_type, subData.dev_mac, 1)
