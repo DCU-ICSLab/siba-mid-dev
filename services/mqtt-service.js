@@ -66,8 +66,8 @@ const mqttReceiveDefine = () => {
         }
 
         const subData = JSON.parse(message.toString());
-        //console.log(topic)
-        //console.log(subData)
+        console.log(topic)
+        console.log(subData)
 
         switch (topic) {
             //하위 장비가 연결되고 등록 정보를 전송했을 때,
@@ -108,14 +108,16 @@ const sendResultToSkill = async (subData) => {
     console.log(tempObject)
 
     loggerFactory.info(`device receive: ${subData.dev_mac}`);
-    keepAliveService.deviceControlFinishResultResponse({
-        devMac: subData.dev_mac,
-        status: subData.status,
-        testId: tempObject.testId,
-        userId: tempObject.userId,
-        devId: tempObject.devId,
-        msg: subData.status === 200 ? '디바이스 명령이 정상적으로 수행되었습니다.' : '명령 수행 오류가 발생했습니다.'
-    })
+    if(tempObject){
+        keepAliveService.deviceControlFinishResultResponse({
+            devMac: subData.dev_mac,
+            status: subData.status,
+            testId: tempObject.testId,
+            userId: tempObject.userId,
+            devId: tempObject.devId,
+            msg: subData.status === 200 ? '디바이스 명령이 정상적으로 수행되었습니다.' : '명령 수행 오류가 발생했습니다.'
+        })
+    }
 }
 
 //디바이스 연결 해제시 수행
@@ -343,6 +345,8 @@ module.exports = {
 
     //MQTT 초기화
     init: () => {
+
+        modelService.init(publishToEvent)
 
         //topic subscribe 설정
         mqttTopcicSubscription();

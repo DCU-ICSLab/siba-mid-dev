@@ -1,4 +1,7 @@
 var models = require('../models');
+//var mqttService = require('./mqtt-service')
+
+let publishToOther = null;
 
 const typeMapping = (type) => {
     let output = ''
@@ -26,7 +29,7 @@ const typeMapping = (type) => {
 
         //STRING
         case '5':
-            output = "VARCHAR(20)"
+            output = "VARCHAR(10)"
             break;
 
         //CHAR
@@ -85,7 +88,7 @@ const ddlGenerator = (model, devMac, events) => {
                 priority    INTEGER,
                 PRIMARY KEY (event_id)
             )`
-        ).then(async ()=>{
+        ).then(async () => {
 
             await models.sequelize.query(
                 `CREATE TABLE ${thirdTable}
@@ -98,7 +101,7 @@ const ddlGenerator = (model, devMac, events) => {
                     REFERENCES ${eventTable}(event_id)
                 )`
             )
-    
+
             await models.sequelize.query(
                 `CREATE TABLE ${controlTable}
                 (
@@ -110,7 +113,7 @@ const ddlGenerator = (model, devMac, events) => {
                 )`
             )
 
-            for(let i=0; i < events.length; i++){
+            for (let i = 0; i < events.length; i++) {
                 await models.sequelize.query(
                     `INSERT INTO ${eventTable}
                     (
@@ -123,17 +126,17 @@ const ddlGenerator = (model, devMac, events) => {
                     )
                     VALUES(
                         ${events[i].eventId},
-                        ${events[i].dataKey},
+                        '${events[i].dataKey}',
                         ${events[i].outputType},
                         ${events[i].ruleType},
-                        ${events[i].ruleValue},
+                        ${events[i].ruleValue ? events[i].ruleValue : 'NULL'},
                         ${events[i].priority}
                     )
                     `
                 );
 
                 //third
-                if(events[i].outputType==='3'){
+                if (events[i].outputType === '3') {
                     await models.sequelize.query(
                         `INSERT INTO ${thirdTable}
                         (
@@ -144,14 +147,14 @@ const ddlGenerator = (model, devMac, events) => {
                         )
                         VALUES(
                             ${events[i].eventId},
-                            ${events[i].host},
-                            ${events[i].port},
-                            ${events[i].path}
+                            '${events[i].host}',
+                            '${events[i].port}',
+                            '${events[i].path}'
                         )
                         `
                     );
                 }
-                else if(events[i].outputType==='2'){
+                else if (events[i].outputType === '2') {
                     await models.sequelize.query(
                         `INSERT INTO ${controlTable}
                         (
@@ -162,7 +165,7 @@ const ddlGenerator = (model, devMac, events) => {
                         VALUES(
                             ${events[i].eventId},
                             ${events[i].evCode},
-                            ${events[i].authKey}
+                            '${events[i].authKey}'
                         )
                         `
                     );
@@ -182,10 +185,41 @@ const dropTable = (tableName) => {
 }
 
 //이벤트 실행 함수
-const actEvent = (type) => {
-    switch(type){
+const actEvent = (type, replaceMac, mac, eventId) => {
+    const controlTable = 'control' + '_' + replaceMac
+    switch (type) {
         case '2':
             console.log('ctrl')
+            models.sequelize.query(
+                `SELECT * 
+                FROM ${controlTable}
+                WHERE event_id=${eventId}`
+            ).then((rows) => {
+                const authKey = rows[0][0].auth_key
+                const evCode = rows[0][0].ev_code;
+                const cmdList = [
+                    {
+                        e: evCode,
+                        t: 1,
+                        d: []
+                    }
+                ]
+
+                //디바이스 등록 여부 조회
+                models.dev.findAll({
+                    attributes: ['dev_mac', 'dev_type'],
+                    where: {
+                        dev_type: authKey
+                    }
+                }).then(devInfo => {
+                    //동일한 타입의 모든 디바이스에게 명령 전송
+                    for (let i = 0; i < devInfo.length; i++) {
+                        publishToOther(devInfo[i].dev_mac, {
+                            c: cmdList
+                        })
+                    }
+                })
+            })
             break;
         case '3':
             console.log('third')
@@ -195,26 +229,26 @@ const actEvent = (type) => {
     }
 }
 
-const checkEventRule = (macStr, key, val) => {
+const checkEventRule = (mac, macStr, key, val) => {
     models.sequelize.query(
         `SELECT * 
-        FROM ${'event' + '_' + macStr}
-        WHERE data_key='${key}'
-        ORDER BY priority ASC`
-    ).then((rows)=>{
+            FROM ${'event' + '_' + macStr}
+            WHERE data_key='${key}'
+            ORDER BY priority ASC`
+    ).then((rows) => {
         let isMatch = false;
-        for(let i=0; i<rows[0].length; i++){
-            switch(rows[0][i].rule_type){
-                case '1':
-                    isMatch = eval(`${val}===${rows[0][i].rule_value}`)
-                    break;
+        for (let i = 0; i < rows[0].length; i++) {
+            switch (rows[0][i].rule_type) {
                 case '2':
-                    isMatch = eval(`${val}!==${rows[0][i].rule_value}`)
+                    isMatch = eval(`${val}==${rows[0][i].rule_value}`)
                     break;
                 case '3':
-                    isMatch = eval(`${val}>${rows[0][i].rule_value}`)
+                    isMatch = eval(`${val}!=${rows[0][i].rule_value}`)
                     break;
                 case '4':
+                    isMatch = eval(`${val}>${rows[0][i].rule_value}`)
+                    break;
+                case '5':
                     isMatch = eval(`${val}<${rows[0][i].rule_value}`)
                     break;
                 //case '0'
@@ -222,8 +256,8 @@ const checkEventRule = (macStr, key, val) => {
                     isMatch = true;
                     break;
             }
-            if(isMatch){
-                actEvent(rows[0][i].output_type)
+            if (isMatch) {
+                actEvent(rows[0][i].output_type, macStr, mac, rows[0][i].event_id)
                 return;
             }
         }
@@ -244,16 +278,24 @@ module.exports = {
     deleteDataModelTable: (devMac) => {
         return new Promise((resolve, reject) => {
             const replaceMac = devMac.replace(/:/g, '')
+            let flag = false;
             models.sequelize.query(`SHOW TABLES`).then(async (rows) => {
                 for (let i = 0; i < rows[0].length; i++) {
                     if (rows[0][i].Tables_in_hub_system.indexOf(replaceMac) !== -1) {
-                        await dropTable(rows[0][i].Tables_in_hub_system)
+                        if (rows[0][i].Tables_in_hub_system.indexOf('event') === -1)
+                            await dropTable(rows[0][i].Tables_in_hub_system)
+                        else {
+                            flag = true;
+                        }
                     }
                 }
+                //await dropTable(rows[0][i].Tables_in_hub_system)
                 //await dropTable('control_'+replaceMac)
                 //await dropTable('third_'+replaceMac)
-                //await dropTable('event_'+replaceMac)
-                models.sequelize.query('COMMIT')
+                if (flag) {
+                    await dropTable('event_' + replaceMac)
+                    models.sequelize.query('COMMIT')
+                }
                 resolve(true);
             })
         })
@@ -269,7 +311,7 @@ module.exports = {
             VALUES(
                 ${record.val}
             )`
-        );
+        )
     },
 
     updateDataModel: (record) => {
@@ -277,7 +319,9 @@ module.exports = {
         models.sequelize.query(
             `UPDATE ${record.key + '_' + replaceMac}
             SET data = ${record.val}`
-        );
+        ).then(() => {
+            checkEventRule(record.mac, replaceMac, record.key, record.val)
+        })
     },
 
     getDataModel: (key, mac) => {
@@ -286,7 +330,7 @@ module.exports = {
             models.sequelize.query(
                 `SELECT data FROM ${key + '_' + replaceMac}`
             ).then((rows) => {
-                if(rows[0].length!==0){
+                if (rows[0].length !== 0) {
                     resolve(rows[0][0].data)
                 }
                 else
@@ -307,7 +351,12 @@ module.exports = {
                 NOW(),
                 ${record.val}
             )`
-        );
-        checkEventRule(replaceMac, record.key, record.val)
+        ).then(() => {
+            checkEventRule(record.mac, replaceMac, record.key, record.val)
+        })
     },
+
+    init: (func) => {
+        publishToOther =func;
+    }
 }

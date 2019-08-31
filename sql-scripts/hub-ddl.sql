@@ -30,7 +30,7 @@ ADD PRIMARY KEY (clog_time,dev_mac);
 CREATE TABLE dev
 (
 	dev_mac              CHAR(17) NOT NULL,
-	dev_type             CHAR(1) NULL,
+	dev_type             CHAR(32) NULL,
 	dev_status           TINYINT NULL
 );
 

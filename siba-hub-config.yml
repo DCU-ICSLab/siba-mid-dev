@@ -1,4 +1,4 @@
 options:
-  hubAuthenticationKey: 6c850710fcb64d4bb122fee5adfc40d9
+  hubAuthenticationKey: 5249d5e4992e43d18fd022179cf41641 
   iotHubSsid: siba-hub-dev
   iotHubPassword: raspberry
