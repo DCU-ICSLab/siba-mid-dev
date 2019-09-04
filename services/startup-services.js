@@ -147,6 +147,8 @@ const compareIpAndUpdate = (cmpInfo) => {
 module.exports = {
     start: async (server) => {
 
+        redisClient.set('isreg', 'N');
+
         // 1 step. yaml 파일로 부터 사용자 설정 정보를 읽어 온다.
         if(await ReadYamlFileService.readDevelopersConfigurations()){
             const userConfiguration = ReadYamlFileService.getDevelopersConfigurations()
@@ -163,15 +165,18 @@ module.exports = {
                     // 4 step Access Point
                     apService.init(userConfiguration.iotHubSsid,userConfiguration.iotHubPassword);
                     apService.disable().then(()=>{
-                        apService.enable()
+                        apService.enable().then(res=>{
+                            if(res){
+                                redisClient.set('isreg', 'Y');
+                                mqttService.init();
+
+                                //establish, keep-alive 설정
+                                KeepAiveService.init(userConfiguration.hubAuthKey, external_ip, upnpConfiguration.out);
+                            }
+                        })
                     })
 
-                    sshClientService.init(server);
-                    mqttService.init();
-
-                    //establish, keep-alive 설정
-                    KeepAiveService.init(userConfiguration.hubAuthKey, external_ip, upnpConfiguration.out);
-
+                    //sshClientService.init(server);
                 });
             }
 

@@ -72,4 +72,11 @@ router.post('/reservation/:res_id', (req, res, next) => {
     })
 })
 
+router.post('/live', (req, res, next) => {
+    res.json({
+        status: 200,
+        msg: 'hub is OK'
+    })
+})
+
 module.exports = router;

@@ -30,6 +30,7 @@ const reservationActor = (devMac, item, idxLoc, res_id, res_type, func) => {
                             [
                                 {
                                     e: item.eventCode,
+                                    t: 5,
                                     d: idxLoc.dynamic ? [item.additional[idxLoc.dynamic]] : [],
                                 }
                             ]

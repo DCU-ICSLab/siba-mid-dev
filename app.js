@@ -8,6 +8,7 @@ var apRouter = require('./routes/ap');
 var devRouter = require('./routes/dev');
 var app = express();
 var cors = require('cors');
+var apService = require('./services/ap-services');
 
 global.loggerFactory = require('./config/logger'); //logger factory 생성
 
@@ -50,5 +51,10 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+//프로세스 종료 시, AP shutdown
+/*process.on('exit',()=>{
+    apService.disable()
+})*/
 
 module.exports = app;
