@@ -2,9 +2,7 @@ version: "3.5"
 
 services:
   web: #production시에는 image로 변경할 것
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: sencom1028/siba-hub-developers:1
     restart: always
     container_name: hub
     ports: 

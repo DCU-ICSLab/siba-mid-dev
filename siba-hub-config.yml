@@ -1,4 +1,10 @@
 options:
+
+  #insert u re hub auth key (32 characters)
   hubAuthenticationKey:   
+
+  #insert u re hub SSID name
   iotHubSsid: siba-hub-developers
+
+  #insert u re hub wpa_passphrase (more then 8 characters)
   iotHubPassword: raspberry
