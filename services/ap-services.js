@@ -22,6 +22,13 @@ let hostapd_options = {
     ssid: '', //ssid는 owner id
     wpa: 2,
     wpa_passphrase: '', //비밀번호
+    //ieee80211d:1,
+    //country_code:'GB',
+    //macaddr_acl:0,
+    //wpa_key_mgmt:'WPA-PSK',
+    //wpa_pairwise:'CCMP',
+    //rsn_pairwise:'CCMP',
+    //auth_algs:1
 };
 
 const ifconfig_options = {

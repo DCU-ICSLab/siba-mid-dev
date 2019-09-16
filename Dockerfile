@@ -1,4 +1,5 @@
-FROM arm32v7/node:8
+#FROM arm32v7/node:8
+FROM raspbian/stretch
 MAINTAINER sencom1028@gmail.com
 
 #&& chown -R node:node /home/node/app
@@ -14,12 +15,17 @@ COPY package*.json ./
 #switch user to node
 USER root
 
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y
+RUN apt-get install curl -y && curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+RUN apt-get install nodejs -y && apt-get install build-essential -y 
+
 #install package, lib when boot start
 ADD ./sh-scripts/boot-st.sh /boot-st.sh
 RUN chmod +x /boot-st.sh
 RUN /boot-st.sh
 
-COPY --chown=node:node . .
+#COPY --chown=node:node . .
+COPY . .
 
 EXPOSE 3000
 
